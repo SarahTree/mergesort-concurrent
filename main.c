@@ -4,8 +4,7 @@
 
 #include "threadpool.h"
 #include "list.h"
-
-#define USAGE "usage: ./sort [ThrdCount] [input_count]\n"
+#define USAGE "usage: ./sort [ThrdCount] [InputFile]\n"
 
 struct {
     pthread_mutex_t mutex;
@@ -15,17 +14,19 @@ struct {
 static llist_t *tmp_list;
 static llist_t *the_list = NULL;
 
-static int ThrdCount = 0, InputFile = 0, max_cut = 0;
+static int ThrdCount = 0, DataCount = 0, max_cut = 0;
 static tpool_t *pool = NULL;
 
-llist_t *merge_list(llist_t *a, llist_t *b)
+
+llist_t *MergeList(llist_t *a, llist_t *b)
 {
     llist_t *_list = list_new();
     node_t *current = NULL;
     while (a->size && b->size) {
-        llist_t *small = (llist_t *)
-                         ((intptr_t) a * (a->head->data <= b->head->data) +
-                          (intptr_t) b * (a->head->data > b->head->data));
+        /* If a->head->data smaller than or equel to b->head->data, return 1*/
+        int cmp = (strcmp(a->head->data, b->head->data) <= 0) ;
+        llist_t *small = (llist_t *)((intptr_t) a * cmp +
+                                     (intptr_t) b * (1-cmp));
         if (current) {
             current->next = small->head;
             current = current->next;
@@ -59,13 +60,13 @@ llist_t *merge_sort(llist_t *list)
     right->size = list->size - mid;
     list_nth(list, mid - 1)->next = NULL;
     left->size = mid;
-    return merge_list(merge_sort(left), merge_sort(right));
+    return MergeList(merge_sort(left), merge_sort(right));
 }
 
 void merge(void *data)
 {
     llist_t *_list = (llist_t *) data;
-    if (_list->size < (uint32_t) InputFile) {
+    if (_list->size < (uint32_t) DataCount) {
         pthread_mutex_lock(&(data_context.mutex));
         llist_t *_t = tmp_list;
         if (!_t) {
@@ -76,7 +77,7 @@ void merge(void *data)
             pthread_mutex_unlock(&(data_context.mutex));
             task_t *_task = (task_t *) malloc(sizeof(task_t));
             _task->func = merge;
-            _task->arg = merge_list(_list, _t);
+            _task->arg = MergeList(_list, _t);
             tqueue_push(pool->queue, _task);
         }
     } else {
@@ -142,27 +143,40 @@ static void *task_run(void *data)
 
 int main(int argc, char const *argv[])
 {
+    FILE *fp;
+    char line[MAX_LAST_NAME_SIZE];
+
+    /*==========Read The Command==========*/
     if (argc < 3) {
         printf(USAGE);
         return -1;
     }
     ThrdCount = atoi(argv[1]);
-    InputFile = atoi(argv[2]);
-    max_cut = ThrdCount * (ThrdCount <= InputFile) +
-              InputFile * (ThrdCount > InputFile) - 1;
 
-    /* Read data */
+    /* Initialize the list*/
     the_list = list_new();
 
-    /* FIXME: remove all all occurrences of printf and scanf
-     * in favor of automated test flow.
-     */
-    printf("input unsorted data line-by-line\n");
-    for (int i = 0; i < InputFile; ++i) {
-        long int data;
-        scanf("%ld", &data);
-        list_add(the_list, data);
+    /*==========File Preprocessing==========*/
+    /* check file opening*/
+    fp = fopen(argv[2],"r");
+    if(!fp) {
+        printf("Cannot open the file\n");
+        return -1;
     }
+
+    /* Read the File*/
+    while(fgets(line,MAX_LAST_NAME_SIZE,fp)) {
+        line[strlen(line)-1] = '\0';
+        list_add(the_list,line);
+        /* Get the quantity of the data*/
+        DataCount++;
+    }
+
+    /* Close the file*/
+    fclose(fp);
+
+    max_cut = ThrdCount * (ThrdCount <= DataCount) +
+              DataCount * (ThrdCount > DataCount) - 1;
 
     /* initialize tasks inside thread pool */
     pthread_mutex_init(&(data_context.mutex), NULL);

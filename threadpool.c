@@ -70,26 +70,26 @@ int tqueue_free(tqueue_t *the_queue)
     return 0;
 }
 
-int tpool_init(tpool_t *the_pool, uint32_t tcount, void *(*func)(void *))
+int tpool_init(tpool_t *pool, uint32_t tcount, void *(*func)(void *))
 {
-    the_pool->threads = (pthread_t *) malloc(sizeof(pthread_t) * tcount);
-    the_pool->count = tcount;
-    the_pool->queue = (tqueue_t *) malloc(sizeof(tqueue_t));
-    tqueue_init(the_pool->queue);
+    pool->threads = (pthread_t *) malloc(sizeof(pthread_t) * tcount);
+    pool->count = tcount;
+    pool->queue = (tqueue_t *) malloc(sizeof(tqueue_t));
+    tqueue_init(pool->queue);
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     for (uint32_t i = 0; i < tcount; ++i)
-        pthread_create(&(the_pool->threads[i]), &attr, func, NULL);
+        pthread_create(&(pool->threads[i]), &attr, func, NULL);
     pthread_attr_destroy(&attr);
     return 0;
 }
 
-int tpool_free(tpool_t *the_pool)
+int tpool_free(tpool_t *pool)
 {
-    for (uint32_t i = 0; i < the_pool->count; ++i)
-        pthread_join(the_pool->threads[i], NULL);
-    free(the_pool->threads);
-    tqueue_free(the_pool->queue);
+    for (uint32_t i = 0; i < pool->count; ++i)
+        pthread_join(pool->threads[i], NULL);
+    free(pool->threads);
+    tqueue_free(pool->queue);
     return 0;
 }

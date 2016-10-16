@@ -20,7 +20,8 @@ sort: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) -rdynamic
 
 clean:
-	rm -f $(OBJS) sort
+	rm -f $(OBJS) sort \
+	      sorted.txt 
 	@rm -rf $(deps)
 
 -include $(deps)
