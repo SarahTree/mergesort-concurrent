@@ -21,13 +21,13 @@ task_t *tqueue_pop(tqueue_t *the_queue)
 {
     task_t *ret;
     pthread_mutex_lock(&(the_queue->mutex));
-    ret = the_queue->tail;
+    ret = the_queue->head;
     if (ret) {
-        the_queue->tail = ret->last;
-        if (the_queue->tail) {
-            the_queue->tail->next = NULL;
+        the_queue->head = ret->prev;
+        if (the_queue->head) {
+            the_queue->head->next = NULL;
         } else {
-            the_queue->head = NULL;
+            the_queue->tail = NULL;
         }
         the_queue->size--;
     }
@@ -47,24 +47,24 @@ uint32_t tqueue_size(tqueue_t *the_queue)
 int tqueue_push(tqueue_t *the_queue, task_t *task)
 {
     pthread_mutex_lock(&(the_queue->mutex));
-    task->last = NULL;
-    task->next = the_queue->head;
-    if (the_queue->head)
-        the_queue->head->last = task;
-    the_queue->head = task;
+    task->prev = NULL;
+    task->next = the_queue->tail;
+    if (the_queue->tail)
+        the_queue->tail->prev = task;
+    the_queue->tail = task;
     if (the_queue->size++ == 0)
-        the_queue->tail = task;
+        the_queue->head = task;
     pthread_mutex_unlock(&(the_queue->mutex));
     return 0;
 }
 
 int tqueue_free(tqueue_t *the_queue)
 {
-    task_t *cur = the_queue->head;
+    task_t *cur = the_queue->tail;
     while (cur) {
-        the_queue->head = the_queue->head->next;
+        the_queue->tail = the_queue->tail->next;
         free(cur);
-        cur = the_queue->head;
+        cur = the_queue->tail;
     }
     pthread_mutex_destroy(&(the_queue->mutex));
     return 0;
