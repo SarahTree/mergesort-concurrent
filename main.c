@@ -5,17 +5,17 @@
 #include "threadpool.h"
 #include "list.h"
 
-#define USAGE "usage: ./sort [thread_count] [input_count]\n"
+#define USAGE "usage: ./sort [ThrdCount] [input_count]\n"
 
 struct {
     pthread_mutex_t mutex;
-    int cut_thread_count;
+    int cut_ThrdCount;
 } data_context;
 
 static llist_t *tmp_list;
 static llist_t *the_list = NULL;
 
-static int thread_count = 0, data_count = 0, max_cut = 0;
+static int ThrdCount = 0, InputFile = 0, max_cut = 0;
 static tpool_t *pool = NULL;
 
 llist_t *merge_list(llist_t *a, llist_t *b)
@@ -65,7 +65,7 @@ llist_t *merge_sort(llist_t *list)
 void merge(void *data)
 {
     llist_t *_list = (llist_t *) data;
-    if (_list->size < (uint32_t) data_count) {
+    if (_list->size < (uint32_t) InputFile) {
         pthread_mutex_lock(&(data_context.mutex));
         llist_t *_t = tmp_list;
         if (!_t) {
@@ -92,9 +92,9 @@ void cut_func(void *data)
 {
     llist_t *list = (llist_t *) data;
     pthread_mutex_lock(&(data_context.mutex));
-    int cut_count = data_context.cut_thread_count;
+    int cut_count = data_context.cut_ThrdCount;
     if (list->size > 1 && cut_count < max_cut) {
-        ++data_context.cut_thread_count;
+        ++data_context.cut_ThrdCount;
         pthread_mutex_unlock(&(data_context.mutex));
 
         /* cut list */
@@ -146,10 +146,10 @@ int main(int argc, char const *argv[])
         printf(USAGE);
         return -1;
     }
-    thread_count = atoi(argv[1]);
-    data_count = atoi(argv[2]);
-    max_cut = thread_count * (thread_count <= data_count) +
-              data_count * (thread_count > data_count) - 1;
+    ThrdCount = atoi(argv[1]);
+    InputFile = atoi(argv[2]);
+    max_cut = ThrdCount * (ThrdCount <= InputFile) +
+              InputFile * (ThrdCount > InputFile) - 1;
 
     /* Read data */
     the_list = list_new();
@@ -158,7 +158,7 @@ int main(int argc, char const *argv[])
      * in favor of automated test flow.
      */
     printf("input unsorted data line-by-line\n");
-    for (int i = 0; i < data_count; ++i) {
+    for (int i = 0; i < InputFile; ++i) {
         long int data;
         scanf("%ld", &data);
         list_add(the_list, data);
@@ -166,10 +166,10 @@ int main(int argc, char const *argv[])
 
     /* initialize tasks inside thread pool */
     pthread_mutex_init(&(data_context.mutex), NULL);
-    data_context.cut_thread_count = 0;
+    data_context.cut_ThrdCount = 0;
     tmp_list = NULL;
     pool = (tpool_t *) malloc(sizeof(tpool_t));
-    tpool_init(pool, thread_count, task_run);
+    tpool_init(pool, ThrdCount, task_run);
 
     /* launch the first task */
     task_t *_task = (task_t *) malloc(sizeof(task_t));
