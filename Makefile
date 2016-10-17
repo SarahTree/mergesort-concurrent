@@ -21,7 +21,7 @@ sort: $(OBJS)
 
 clean:
 	rm -f $(OBJS) sort \
-	      sorted.txt 
+	      sorted.txt input.txt
 	@rm -rf $(deps)
 
 -include $(deps)
