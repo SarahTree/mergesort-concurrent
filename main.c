@@ -82,14 +82,11 @@ void merge(void *data)
 {
     llist_t *_list = (llist_t *) data;
     if (_list->size < (uint32_t) DataCount) {
-        pthread_mutex_lock(&(data_context.mutex));
         llist_t *_t = tmp_list;
         if (!_t) {
             tmp_list = _list;
-            pthread_mutex_unlock(&(data_context.mutex));
         } else {
             tmp_list = NULL;
-            pthread_mutex_unlock(&(data_context.mutex));
             task_t *_task = (task_t *) malloc(sizeof(task_t));
             _task->func = merge;
             _task->arg = MergeList(_list, _t);
