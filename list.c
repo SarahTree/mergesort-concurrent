@@ -55,7 +55,7 @@ void list_print(llist_t *list)
     FILE *output;
     output = fopen("sorted.txt","a");
     while (cur) {
-        fprintf(output, " %s\n", cur->data);
+        fprintf(output, "%s\n", cur->data);
         cur = cur->next;
     }
     fclose(output);
