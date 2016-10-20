@@ -7,66 +7,58 @@ int task_free(task_t *the_task)
     return 0;
 }
 
-int tqueue_init(tqueue_t *the_queue)
+int tqueue_init(tqueue_t *queue)
 {
-    the_queue->head = NULL;
-    the_queue->tail = NULL;
-    pthread_mutex_init(&(the_queue->mutex), NULL);
-    pthread_cond_init(&(the_queue->cond), NULL);
-    the_queue->size = 0;
+    queue->head = NULL;
+    queue->tail = NULL;
+    pthread_mutex_init(&(queue->mutex), NULL);
+    pthread_cond_init(&(queue->cond), NULL);
+    queue->size = 0;
     return 0;
 }
 
-task_t *tqueue_pop(tqueue_t *the_queue)
+task_t *tqueue_pop(tqueue_t *queue)
 {
     task_t *ret;
-    pthread_mutex_lock(&(the_queue->mutex));
-    ret = the_queue->head;
+    ret = queue->head;
     if (ret) {
-        the_queue->head = ret->prev;
-        if (the_queue->head) {
-            the_queue->head->next = NULL;
+        queue->head = ret->prev;
+        if (queue->head) {
+            queue->head->next = NULL;
         } else {
-            the_queue->tail = NULL;
+            queue->tail = NULL;
         }
-        the_queue->size--;
+        queue->size--;
     }
-    pthread_mutex_unlock(&(the_queue->mutex));
     return ret;
 }
 
-uint32_t tqueue_size(tqueue_t *the_queue)
+int tqueue_push(tqueue_t *queue, task_t *task)
 {
-    uint32_t ret;
-    pthread_mutex_lock(&(the_queue->mutex));
-    ret = the_queue->size;
-    pthread_mutex_unlock(&(the_queue->mutex));
-    return ret;
-}
-
-int tqueue_push(tqueue_t *the_queue, task_t *task)
-{
-    pthread_mutex_lock(&(the_queue->mutex));
+    pthread_mutex_lock(&(queue->mutex));
     task->prev = NULL;
-    task->next = the_queue->tail;
-    if (the_queue->tail)
-        the_queue->tail->prev = task;
-    the_queue->tail = task;
-    if (the_queue->size++ == 0)
-        the_queue->head = task;
-    pthread_mutex_unlock(&(the_queue->mutex));
+    task->next = queue->tail;
+    if (queue->tail)
+        queue->tail->prev = task;
+    queue->tail = task;
+    if (queue->size++ == 0)
+        queue->head = task;
+    pthread_cond_signal(&(queue->cond));
+    pthread_mutex_unlock(&(queue->mutex));
     return 0;
 }
 
-int tqueue_free(tqueue_t *the_queue)
+int tqueue_free(tqueue_t *queue)
 {
-    task_t *cur = the_queue->tail;
+    task_t *cur = queue->tail;
     while (cur) {
-        the_queue->tail = the_queue->tail->next;
+        queue->tail = queue->tail->next;
         free(cur);
-        cur = the_queue->tail;
+        cur = queue->tail;
     }
-    pthread_mutex_destroy(&(the_queue->mutex));
+    pthread_mutex_lock(&(queue->mutex));
+    pthread_mutex_destroy(&(queue->mutex));
+    pthread_cond_destroy(&(queue->cond));
     return 0;
 }
 
@@ -87,6 +79,8 @@ int tpool_init(tpool_t *pool, uint32_t tcount, void *(*func)(void *))
 
 int tpool_free(tpool_t *pool)
 {
+    pthread_cond_broadcast(&(pool->queue->cond));
+    pthread_mutex_unlock(&(pool->queue->mutex));
     for (uint32_t i = 0; i < pool->count; ++i)
         pthread_join(pool->threads[i], NULL);
     free(pool->threads);
