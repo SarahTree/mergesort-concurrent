@@ -6,7 +6,6 @@
 #include "threadpool.h"
 #include "list.h"
 #define USAGE "usage: ./sort [ThrdCount] [InputFile]\n"
-#define TEST 1
 
 struct {
     pthread_mutex_t mutex;
